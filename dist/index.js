@@ -331,6 +331,12 @@ async function runVerify({ core, timestampsFilePath, baseDir }) {
     await git.fetch('ogirin');
     const files = await getFilesWithGitTimestamp(git, baseDir);
     const verifiedFiles = await parseTimesampsJson(timestampsFilePath, baseDir);
+    try {
+        __nccwpck_require__(569)(); // eslint-disable-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    }
+    catch (error) {
+        core.debug('not in posix');
+    }
     for (const [k, verified] of verifiedFiles) {
         if (verified.isBefore(files.get(k))) {
             verifiedFiles.delete(k);
@@ -11178,6 +11184,44 @@ if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
   debug = function() {};
 }
 exports.debug = debug; // for test
+
+
+/***/ }),
+
+/***/ 569:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/*! unlimited. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
+var debug = __nccwpck_require__(237)('unlimited')
+var posix
+try { posix = __nccwpck_require__(150) } catch (err) {}
+
+var DEFAULT_LIMIT = 65536
+
+module.exports = function unlimited (limit) {
+  if (!limit) limit = DEFAULT_LIMIT
+  if (!posix) {
+    debug('Failed to upgrade resource limits - missing `posix` package')
+    return
+  }
+  try {
+    posix.setrlimit('nofile', {
+      soft: limit,
+      hard: limit
+    })
+    debug('Upgraded resource limits to ' + posix.getrlimit('nofile').soft)
+  } catch (err) {
+    debug('Failed to upgrade resource limits: %s', err.message || err)
+  }
+}
+
+
+/***/ }),
+
+/***/ 150:
+/***/ ((module) => {
+
+module.exports = eval("require")("posix");
 
 
 /***/ }),

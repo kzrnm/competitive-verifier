@@ -71,9 +71,14 @@ export async function runVerify({
 }): Promise<void> {
   const git = simpleGit(baseDir)
   await git.fetch('ogirin')
-
   const files = await getFilesWithGitTimestamp(git, baseDir)
   const verifiedFiles = await parseTimesampsJson(timestampsFilePath, baseDir)
+
+  try {
+    require('unlimited')() // eslint-disable-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  } catch (error) {
+    core.debug('not in posix')
+  }
 
   for (const [k, verified] of verifiedFiles) {
     if (verified.isBefore(files.get(k))) {
