@@ -1,11 +1,31 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: competitive-verifier
+description: A verifier for competitive programming library
+author: kzrnm
 inputs:
-  milliseconds: # change this
-    required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  cwd:
+    description: base directory
+    required: false
+    default: "."
+  create-docs:
+    required: false
+    default: "true"
+    description: if true, create documents
+  create-timestamps:
+    required: false
+    default: "true"
+    description: if true, create timestamps.remote.json
+  timestamps-file:
+    required: false
+    description: timestamps file
+    default: .verify-helper/timestamps.remote.json
+  config-file:
+    required: false
+    description: config file
+    default: .verify-helper/config.toml
+  timeout:
+    required: false
+    description: Timeout second of the action
+    default: "600"
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: "node16"
+  main: "dist/index.js"

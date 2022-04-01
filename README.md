@@ -1,8 +1,15 @@
-<p align="center">
-  <a href="https://github.com/actions/typescript-action/actions"><img alt="typescript-action status" src="https://github.com/actions/typescript-action/workflows/build-test/badge.svg"></a>
-</p>
+# Competitive verifier
+A verifier for competitive programming library.
 
-# Create a JavaScript Action using TypeScript
+This action is inspired by [verification-helper](https://github.com/online-judge-tools/verification-helper).
+
+
+
+
+
+
+------------------
+# Original
 
 Use this template to bootstrap the creation of a TypeScript action.:rocket:
 
