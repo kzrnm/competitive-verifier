@@ -135,7 +135,7 @@ run();
 
 /***/ }),
 
-/***/ 349:
+/***/ 365:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -167,10 +167,60 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.OnlineJudgeVerify = void 0;
+exports.createTimestamps = void 0;
 const fs = __importStar(__nccwpck_require__(292));
 const path_1 = __importDefault(__nccwpck_require__(17));
 const simple_git_1 = __importDefault(__nccwpck_require__(103));
+async function createTimestamps({ core, files, timestampsFilePath, baseDir, commit = false }) {
+    try {
+        await fs.mkdir(path_1.default.dirname(timestampsFilePath), { recursive: true });
+        await fs.writeFile(timestampsFilePath, JSON.stringify(files, null, ' '));
+        if (!commit) {
+            core.info('local run');
+            return;
+        }
+        const git = (0, simple_git_1.default)({ baseDir });
+        await git
+            .addConfig('user.name', 'GitHub')
+            .addConfig('user.email', 'noreply@github.com')
+            .addConfig('author.name', process.env['GITHUB_ACTOR'] || '');
+        try {
+            await git.pull('origin').add(timestampsFilePath);
+        }
+        catch (error) {
+            if (error instanceof Error)
+                core.error(error);
+            core.info(`Keep ${timestampsFilePath}`);
+            return;
+        }
+        core.info(`Update ${timestampsFilePath}`);
+        // テスト時のローカル実行でプッシュされても嬉しくないため
+        await git
+            .commit(`[auto-verifier] verify commit ${process.env['GITHUB_SHA'] || ''}`)
+            .push('origin', undefined);
+    }
+    catch (error) {
+        core.error(`failed to create ${timestampsFilePath}`);
+        throw error;
+    }
+}
+exports.createTimestamps = createTimestamps;
+
+
+/***/ }),
+
+/***/ 349:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OnlineJudgeVerify = void 0;
+const path_1 = __importDefault(__nccwpck_require__(17));
+const timestamps_1 = __nccwpck_require__(365);
 class OnlineJudgeVerify {
     /**
      * constructor
@@ -178,16 +228,20 @@ class OnlineJudgeVerify {
     constructor(core) {
         this.core = core;
     }
+    get isInGitHubActions() {
+        return process.env['GITHUB_ACTION'] !== undefined;
+    }
     /**
      * run
      */
     async run(config) {
+        const baseDir = path_1.default.join(process.cwd(), config.baseDir || '');
         await this.runVerify();
         if (config.createTimestamps)
             await this.createTimestamps({
                 files: {},
                 timestampsFilePath: config.timestampsFilePath,
-                baseDir: path_1.default.join(process.cwd(), config.baseDir || '')
+                baseDir
             });
         if (config.createDocs)
             await this.createDocuments();
@@ -201,37 +255,13 @@ class OnlineJudgeVerify {
      */
     async createTimestamps({ files, timestampsFilePath, baseDir }) {
         timestampsFilePath = path_1.default.join(baseDir, timestampsFilePath);
-        try {
-            await fs.mkdir(path_1.default.dirname(timestampsFilePath), { recursive: true });
-            await fs.writeFile(timestampsFilePath, JSON.stringify(files));
-            const git = (0, simple_git_1.default)({ baseDir });
-            await git
-                .addConfig('user.name', 'GitHub')
-                .addConfig('user.email', 'noreply@github.com')
-                .addConfig('author.name', process.env['GITHUB_ACTOR'] || '');
-            try {
-                await git.pull('origin').add(timestampsFilePath);
-            }
-            catch (error) {
-                if (error instanceof Error)
-                    this.core.error(error);
-                this.core.info(`Keep ${timestampsFilePath}`);
-                return;
-            }
-            this.core.info(`Update ${timestampsFilePath}`);
-            if (process.env['GITHUB_ACTION']) {
-                await git
-                    .commit(`[auto-verifier] verify commit ${process.env['GITHUB_SHA'] || ''}`)
-                    .push('origin', undefined);
-            }
-            else {
-                this.core.info('local run');
-            }
-        }
-        catch (error) {
-            this.core.error(`failed to create ${timestampsFilePath}`);
-            throw error;
-        }
+        return await (0, timestamps_1.createTimestamps)({
+            core: this.core,
+            baseDir,
+            timestampsFilePath,
+            files,
+            commit: this.isInGitHubActions
+        });
     }
     /**
      * createDocuments
