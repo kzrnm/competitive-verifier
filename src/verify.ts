@@ -47,6 +47,7 @@ export class OnlineJudgeVerify {
     timestampsFilePath = path.join(baseDir, timestampsFilePath)
     try {
       await fs.mkdir(path.dirname(timestampsFilePath), {recursive: true})
+      await fs.writeFile(timestampsFilePath, `{}`)
 
       const git = simpleGit({baseDir})
       await git
