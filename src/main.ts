@@ -6,7 +6,7 @@ async function run(): Promise<void> {
   try {
     const config = await loadConfigFromInput(core)
     core.debug(`config: ${config}`)
-    await new OnlineJudgeVerify(core, config).run()
+    await new OnlineJudgeVerify(core).run(config)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
