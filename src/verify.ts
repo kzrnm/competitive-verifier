@@ -44,20 +44,28 @@ export class OnlineJudgeVerify {
     timestampsFilePath: string
     baseDir: string
   }): Promise<void> {
-    const git = simpleGit({baseDir})
-    await git
-      .addConfig('user.name', 'GitHub')
-      .addConfig('user.email', 'noreply@github.com')
-      .addConfig('author.name', process.env['GITHUB_ACTOR'] || '')
-
+    timestampsFilePath = path.join(baseDir, timestampsFilePath)
     try {
-      await fs.writeFile(timestampsFilePath, `{}`)
+      await fs.mkdir(path.dirname(timestampsFilePath), {recursive: true})
+
+      const git = simpleGit({baseDir})
       await git
-        .add(timestampsFilePath)
+        .addConfig('user.name', 'GitHub')
+        .addConfig('user.email', 'noreply@github.com')
+        .addConfig('author.name', process.env['GITHUB_ACTOR'] || '')
+
+      try {
+        await git.pull('origin').add(timestampsFilePath)
+      } catch (error) {
+        this.core.info(`Keep ${timestampsFilePath}`)
+        return
+      }
+      this.core.info(`Update ${timestampsFilePath}`)
+      await git
         .commit(
           `[auto-verifier] verify commit ${process.env['GITHUB_SHA'] || ''}`
         )
-        .pull('origin', undefined)
+        .push('origin', undefined)
     } catch (error) {
       if (error instanceof Error) {
         throw error
