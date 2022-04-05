@@ -1,21 +1,32 @@
 {
+  "examples/awk/circle.awk": {
+    "links": [],
+    "attributes": {},
+    "dependencies": null
+  },
   "examples/awk/circle.test.awk": {
     "execute": "awk -f examples/awk/circle.test.awk",
-    "attributes": {
-      "ERROR": "1e-5",
-      "PROBLEM": "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B",
-      "IGNORE": ""
-    },
     "links": [
       "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B"
     ],
-    "dependencies": [
-      "examples/awk/circle.awk"
-    ]
+    "attributes": {
+      "PROBLEM": "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B",
+      "ERROR": "1e-5"
+    },
+    "dependencies": "examples/awk/circle.awk"
   },
-  "examples/awk/circle.awk": {
-    "attributes": {},
+  "examples/awk/sameas.awk": {
     "links": [],
-    "dependencies": []
+    "attributes": {
+      "SAMEAS": "examples/awk/circle.test.awk"
+    },
+    "dependencies": null
+  },
+  "examples/awk/ignore.awk": {
+    "links": [],
+    "attributes": {
+      "IGNORE": ""
+    },
+    "dependencies": null
   }
 }

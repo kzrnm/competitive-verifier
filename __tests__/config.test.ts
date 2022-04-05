@@ -19,23 +19,36 @@ describe('load config', () => {
       timeout: 55.5,
       timestampsFilePath: '__tests__/timestamps.test.json',
       verifyJson: {
+        'examples/awk/circle.awk': {
+          links: [],
+          attributes: {},
+          dependencies: null
+        },
         'examples/awk/circle.test.awk': {
           execute: 'awk -f examples/awk/circle.test.awk',
           links: [
             'http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B'
           ],
           attributes: {
-            ERROR: '1e-5',
             PROBLEM:
               'http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B',
+            ERROR: '1e-5'
+          },
+          dependencies: 'examples/awk/circle.awk'
+        },
+        'examples/awk/sameas.awk': {
+          links: [],
+          attributes: {
+            SAMEAS: 'examples/awk/circle.test.awk'
+          },
+          dependencies: null
+        },
+        'examples/awk/ignore.awk': {
+          links: [],
+          attributes: {
             IGNORE: ''
           },
-          dependencies: ['examples/awk/circle.awk']
-        },
-        'examples/awk/circle.awk': {
-          attributes: {},
-          links: [],
-          dependencies: []
+          dependencies: null
         }
       }
     })
