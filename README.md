@@ -3,110 +3,65 @@ A verifier for competitive programming library.
 
 This action is inspired by [verification-helper](https://github.com/online-judge-tools/verification-helper).
 
+## Usage
 
-
-
-
-
-------------------
-# Original
-
-Use this template to bootstrap the creation of a TypeScript action.:rocket:
-
-This template includes compilation support, tests, a validation workflow, publishing, and versioning guidance.  
-
-If you are new, there's also a simpler introduction.  See the [Hello World JavaScript Action](https://github.com/actions/hello-world-javascript-action)
-
-## Create an action from this template
-
-Click the `Use this Template` and provide the new repo details for your action
-
-## Code in Main
-
-> First, you'll need to have a reasonably modern version of `node` handy. This won't work with versions older than 9, for instance.
-
-Install the dependencies  
-```bash
-$ npm install
+```yml
+# TODO
 ```
 
-Build the typescript and package it for distribution
-```bash
-$ npm run build && npm run package
-```
 
-Run the tests :heavy_check_mark:  
-```bash
-$ npm test
+## Input
 
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
+### `verify-json`
 
-...
-```
+**Required** json file that contains verification settings
 
-## Change action.yml
+下記のような json を指定します。あらかじめ別のアクションで作成してください。
 
-The action.yml defines the inputs and output for your action.
+コンパイルが必要な言語の場合はあらかじめコンパイルしておいてください。
 
-Update the action.yml with your name, description, inputs and outputs for your action.
-
-See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
-
-## Change the Code
-
-Most toolkit and CI/CD operations involve async operations so the action is run in an async function.
-
-```javascript
-import * as core from '@actions/core';
-...
-
-async function run() {
-  try { 
-      ...
-  } 
-  catch (error) {
-    core.setFailed(error.message);
+```json
+{
+  "examples/awk/circle.test.awk": {
+    "execute": "awk -f examples/awk/circle.test.awk",
+    "attributes": {
+      "ERROR": "1e-5",
+      "PROBLEM": "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B",
+      "IGNORE": ""
+    },
+    "links": [
+      "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B"
+    ],
+    "dependencies": [
+      "examples/awk/circle.awk"
+    ]
+  },
+  "examples/awk/circle.awk": {
+    "attributes": {},
+    "links": [],
+    "dependencies": []
   }
 }
-
-run()
 ```
 
-See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
+#### Property of `verify-json`
 
-## Publish to a distribution branch
+- `execute`: Excecution command
+- `attributes`: File attribute
+- `links`: Links in the file
+- `dependencies`: Other files that the file is dependant on
 
-Actions are run from GitHub repos so we will checkin the packed dist folder. 
+### `cwd`
+base directory
 
-Then run [ncc](https://github.com/zeit/ncc) and push the results:
-```bash
-$ npm run package
-$ git add dist
-$ git commit -a -m "prod dependencies"
-$ git push origin releases/v1
-```
 
-Note: We recommend using the `--license` option for ncc, which will create a license file for all of the production node modules used in your project.
+### `create-docs`
+if true, create documents
+### `create-timestamps`
+if true, create timestamps.remote.json
 
-Your action is now published! :rocket: 
+### `timestamps-file`
+timestamps file
 
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-## Validate
-
-You can now validate the action by referencing `./` in a workflow in your repo (see [test.yml](.github/workflows/test.yml))
-
-```yaml
-uses: ./
-with:
-  milliseconds: 1000
-```
-
-See the [actions tab](https://github.com/actions/typescript-action/actions) for runs of this action! :rocket:
-
-## Usage:
-
-After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and latest V1 action
+### `timeout`
+Timeout second of the action

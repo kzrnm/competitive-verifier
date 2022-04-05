@@ -12,6 +12,12 @@ export class DummyCore {
   getBooleanInput(name: string): boolean {
     return this.input[name]?.toLowerCase() === 'true'
   }
+  async group<T>(name: string, fn: () => Promise<T>): Promise<T> {
+    this.log.push(['start-group', name])
+    const p = await fn()
+    this.log.push(['end-group', name])
+    return p
+  }
   debug(message: string) {
     this.log.push(['debug', message])
   }

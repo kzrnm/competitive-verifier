@@ -1,5 +1,5 @@
 import {DummyCore} from './utils/dummy'
-import {loadConfigFromInput, parseToml} from '../src/config'
+import {loadConfigFromInput} from '../src/config'
 import {expect, test, describe} from '@jest/globals'
 
 describe('load config', () => {
@@ -7,7 +7,7 @@ describe('load config', () => {
     const dummy = new DummyCore({
       timeout: '55.5',
       cwd: 'dist',
-      'config-file': '__tests__/resouce/test_config.toml',
+      'verify-json': '__tests__/resource/verify.test.json',
       'create-docs': 'True',
       'create-timestamps': 'TRUE',
       'timestamps-file': '__tests__/timestamps.test.json'
@@ -18,13 +18,33 @@ describe('load config', () => {
       createTimestamps: true,
       timeout: 55.5,
       timestampsFilePath: '__tests__/timestamps.test.json',
-      tomlConfig: {}
+      verifyJson: {
+        'examples/awk/circle.test.awk': {
+          execute: 'awk -f examples/awk/circle.test.awk',
+          links: [
+            'http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B'
+          ],
+          attributes: {
+            ERROR: '1e-5',
+            PROBLEM:
+              'http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B',
+            IGNORE: ''
+          },
+          dependencies: ['examples/awk/circle.awk']
+        },
+        'examples/awk/circle.awk': {
+          attributes: {},
+          links: [],
+          dependencies: []
+        }
+      }
     })
   })
 
   test('invalid', async () => {
     const dummy = new DummyCore({
       'create-docs': 'foo',
+      'verify-json': '__tests__/resource/verify.empty.json',
       'create-timestamps': 'true',
       timeout: 'time'
     })
@@ -34,23 +54,7 @@ describe('load config', () => {
       baseDir: '',
       timeout: 60,
       timestampsFilePath: '',
-      tomlConfig: {}
+      verifyJson: {}
     })
-  })
-})
-
-describe('parse toml', () => {
-  test('awk', async () => {
-    expect(
-      parseToml(`[languages.awk]
-    compile = "bash -c 'echo hello > {tempdir}/hello'"
-    execute = "env AWKPATH={basedir} awk -f {path}"
-    bundle = "false"
-    list_dependencies = "sed 's/^@include \\"\\\\(.*\\\\)\\"$/\\\\1/ ; t ; d' {path}"
-
-    [[languages.cpp.environments]]
-    CXX = "g++"
-        `)
-    ).toStrictEqual({})
   })
 })

@@ -3,7 +3,39 @@ import {PathLike} from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import simpleGit, {SimpleGit} from 'simple-git'
+import {VerifyJson} from './config'
 import {ActionsCore} from './types'
+
+class Verifier {
+  constructor(
+    private core: ActionsCore,
+    private baseDir: string,
+    private verifyJson: VerifyJson
+  ) {}
+
+  /**
+   * verify
+   * @param timeout seconds
+   */
+  async verify(
+    files: FileWithTimestamp,
+    verifiedFiles: FileWithTimestamp,
+    timeout: number
+  ): Promise<void> {
+    const startTime = dayjs()
+    const timeoutTime = startTime.add(timeout, 'seconds')
+    this.core.info(
+      `run \`verify\` from ${startTime.toISOString()} to ${timeoutTime.toISOString()}`
+    )
+    for (const [k, verified] of verifiedFiles) {
+      if (verified.isBefore(files.get(k))) {
+        verifiedFiles.delete(k)
+      }
+    }
+
+    this.core.info(JSON.stringify(this.verifyJson))
+  }
+}
 
 type FileWithTimestamp = Map<string, dayjs.Dayjs>
 
@@ -62,17 +94,28 @@ async function getFilesWithGitTimestamp(
 
 export async function runVerify({
   core,
+  timeout,
+  verifyJson,
   timestampsFilePath,
   baseDir
 }: {
   core: ActionsCore
+  verifyJson: VerifyJson
   timestampsFilePath: string
   baseDir: string
+  timeout: number
 }): Promise<void> {
   const git = simpleGit(baseDir)
   await git.fetch('ogirin')
   const files = await getFilesWithGitTimestamp(git, baseDir)
   const verifiedFiles = await parseTimesampsJson(timestampsFilePath, baseDir)
+
+  await core.group('git timestamps', async () => {
+    core.info(JSON.stringify([...files]))
+  })
+  await core.group('json timestamps', async () => {
+    core.info(JSON.stringify([...verifiedFiles]))
+  })
 
   try {
     require('unlimited')() // eslint-disable-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
@@ -80,12 +123,9 @@ export async function runVerify({
     core.debug('not in posix')
   }
 
-  for (const [k, verified] of verifiedFiles) {
-    if (verified.isBefore(files.get(k))) {
-      verifiedFiles.delete(k)
-    }
-  }
-
-  core.info(JSON.stringify([...files]))
-  core.info(JSON.stringify([...verifiedFiles]))
+  await new Verifier(core, baseDir, verifyJson).verify(
+    files,
+    verifiedFiles,
+    timeout
+  )
 }

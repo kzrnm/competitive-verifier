@@ -23,6 +23,7 @@ export class OnlineJudgeVerify {
     const baseDir = path.join(process.cwd(), config.baseDir || '')
     const timestampsFilePath = path.join(baseDir, config.timestampsFilePath)
     await this.runVerify({
+      config,
       timestampsFilePath,
       baseDir
     })
@@ -40,14 +41,18 @@ export class OnlineJudgeVerify {
    * runVerify
    */
   async runVerify({
+    config,
     timestampsFilePath,
     baseDir
   }: {
+    config: Config
     timestampsFilePath: string
     baseDir: string
   }): Promise<void> {
     await runVerify({
       core: this.actionsCore,
+      verifyJson: config.verifyJson,
+      timeout: config.timeout,
       baseDir,
       timestampsFilePath
     })

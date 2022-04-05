@@ -19,6 +19,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Create verifier.json
+        shell: pwsh
+        run: |
+          git ls-files examples/awk | dir | % {$res = @{}} {
+            $t = (Get-Content $_ -Raw);
+            $r = $res[$_.FullName] = @{}
+            $r['attributes'] = @{}
+            [regex]::Matches($t, 'verification-helper:\s*(\S+)(?:\s(.*))?$', 'MultiLine') | % {  $r['attributes'][$_.Groups[1].Value] = $_.Groups[2].Value.Trim() }
+            $r['links'] = @([regex]::Matches($t, 'https?://[^`"\s]*') | % Value)
+            $r['dependencies'] = [regex]::Matches($t, '@include\s+"([^"]+)"') | % { $_.Groups[1].Value }
+
+            if($_.Name.Contains('.test.')){
+              $r['execute'] = "awk -f $($_.FullName)"
+            }
+          } {$res} | ConvertTo-Json -Depth 100 > verifier.json
       - uses: ./
         with:
           create-timestamps: false
+          verify-json: verifier.json

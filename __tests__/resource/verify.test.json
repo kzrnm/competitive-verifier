@@ -1,0 +1,21 @@
+{
+  "examples/awk/circle.test.awk": {
+    "execute": "awk -f examples/awk/circle.test.awk",
+    "attributes": {
+      "ERROR": "1e-5",
+      "PROBLEM": "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B",
+      "IGNORE": ""
+    },
+    "links": [
+      "http://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_4_B"
+    ],
+    "dependencies": [
+      "examples/awk/circle.awk"
+    ]
+  },
+  "examples/awk/circle.awk": {
+    "attributes": {},
+    "links": [],
+    "dependencies": []
+  }
+}

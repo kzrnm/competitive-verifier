@@ -2,6 +2,9 @@ name: competitive-verifier
 description: A verifier for competitive programming library
 author: kzrnm
 inputs:
+  verify-json: 
+    required: true
+    description: json file that contains verification settings
   cwd:
     description: base directory
     required: false
@@ -18,10 +21,6 @@ inputs:
     required: false
     description: timestamps file
     default: .verify-helper/timestamps.remote.json
-  config-file:
-    required: false
-    description: config file
-    default: .verify-helper/config.toml
   timeout:
     required: false
     description: Timeout second of the action
