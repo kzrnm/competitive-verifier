@@ -32,6 +32,7 @@ export async function loadConfigFromInput(core: ActionsCore): Promise<Config> {
 }
 export interface VerifyJsonFile {
   execute?: string
+  bundle?: string
   dependencies?: string[]
   links?: string[]
   attributes?: {[key: string]: string}

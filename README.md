@@ -48,8 +48,9 @@ This action is inspired by [verification-helper](https://github.com/online-judge
 
 - `execute`: Excecution command
 - `attributes`: File attribute
-- `links`: Links in the file
 - `dependencies`: Other files that the file is dependant on
+- `links`: Links in the file
+- `bundle`: **Optional** Bundled source code
 
 ### `cwd`
 base directory
