@@ -1,4 +1,4 @@
-import {ActionsCore} from './types'
+import {ActionsCore} from './actions'
 import * as fs from 'fs/promises'
 
 export async function loadConfigFromInput(core: ActionsCore): Promise<Config> {

@@ -38,16 +38,12 @@ describe('load config', () => {
         },
         'examples/awk/sameas.awk': {
           links: [],
-          attributes: {
-            SAMEAS: 'examples/awk/circle.test.awk'
-          },
+          attributes: {SAMEAS: 'examples/awk/circle.test.awk'},
           dependencies: null
         },
         'examples/awk/ignore.awk': {
           links: [],
-          attributes: {
-            IGNORE: ''
-          },
+          attributes: {IGNORE: ''},
           dependencies: null
         }
       }

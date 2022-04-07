@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import path from 'path'
 import dayjs from 'dayjs'
 import {loadConfigFromInput, Config} from './config'
-import {ActionsCore} from './types'
+import {ActionsCore} from './actions'
 import {createTimestamps} from './timestamps'
 import {runVerify} from './verify'
 
@@ -22,19 +22,18 @@ export class OnlineJudgeVerify {
   async run(config: Config): Promise<void> {
     const baseDir = path.join(process.cwd(), config.baseDir || '')
     const timestampsFilePath = path.join(baseDir, config.timestampsFilePath)
-    await this.runVerify({
-      config,
-      timestampsFilePath,
-      baseDir
-    })
+    await this.runVerify({config, timestampsFilePath, baseDir})
 
-    if (config.createTimestamps)
+    if (config.createTimestamps) {
       await this.createTimestamps({
         files: {}, // TODO: files
         timestampsFilePath,
         baseDir
       })
-    if (config.createDocs) await this.createDocuments()
+    }
+    if (config.createDocs) {
+      await this.createDocuments()
+    }
   }
 
   /**
@@ -90,7 +89,9 @@ async function run(): Promise<void> {
     core.debug(`config: ${config}`)
     await new OnlineJudgeVerify(core).run(config)
   } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) {
+      core.setFailed(error.message)
+    }
   }
 }
 

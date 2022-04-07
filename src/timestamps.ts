@@ -2,7 +2,7 @@ import * as fs from 'fs/promises'
 import path from 'path'
 import dayjs from 'dayjs'
 import simpleGit from 'simple-git'
-import {ActionsCore} from './types'
+import {ActionsCore} from './actions'
 
 export async function createTimestamps({
   core,
@@ -19,7 +19,13 @@ export async function createTimestamps({
 }): Promise<void> {
   try {
     await fs.mkdir(path.dirname(timestampsFilePath), {recursive: true})
-    await fs.writeFile(timestampsFilePath, JSON.stringify(files, null, ' '))
+    const relative = Object.fromEntries(
+      Object.entries(files).map(([name, f]) => [
+        path.relative(baseDir, name),
+        f
+      ])
+    )
+    await fs.writeFile(timestampsFilePath, JSON.stringify(relative, null, ' '))
     if (!commit) {
       core.info('local run')
       return
@@ -34,7 +40,9 @@ export async function createTimestamps({
     try {
       await git.pull('origin').add(timestampsFilePath)
     } catch (error) {
-      if (error instanceof Error) core.error(error)
+      if (error instanceof Error) {
+        core.error(error)
+      }
       core.info(`Keep ${timestampsFilePath}`)
       return
     }

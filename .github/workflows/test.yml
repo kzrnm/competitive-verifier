@@ -28,7 +28,7 @@ jobs:
             $r['attributes'] = @{}
             [regex]::Matches($t, 'verification-helper:\s*(\S+)(?:\s(.*))?$', 'MultiLine') | % {  $r['attributes'][$_.Groups[1].Value] = $_.Groups[2].Value.Trim() }
             $r['links'] = @([regex]::Matches($t, 'https?://[^`"\s]*') | % Value)
-            $r['dependencies'] = [regex]::Matches($t, '@include\s+"([^"]+)"') | % { $_.Groups[1].Value }
+            $r['dependencies'] = @([regex]::Matches($t, '@include\s+"([^"]+)"') | % { $_.Groups[1].Value })
 
             if($_.Name.Contains('.test.')){
               $r['execute'] = "awk -f $($_.FullName)"

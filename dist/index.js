@@ -119,19 +119,17 @@ class OnlineJudgeVerify {
     async run(config) {
         const baseDir = path_1.default.join(process.cwd(), config.baseDir || '');
         const timestampsFilePath = path_1.default.join(baseDir, config.timestampsFilePath);
-        await this.runVerify({
-            config,
-            timestampsFilePath,
-            baseDir
-        });
-        if (config.createTimestamps)
+        await this.runVerify({ config, timestampsFilePath, baseDir });
+        if (config.createTimestamps) {
             await this.createTimestamps({
                 files: {},
                 timestampsFilePath,
                 baseDir
             });
-        if (config.createDocs)
+        }
+        if (config.createDocs) {
             await this.createDocuments();
+        }
     }
     /**
      * runVerify
@@ -170,8 +168,9 @@ async function run() {
         await new OnlineJudgeVerify(core).run(config);
     }
     catch (error) {
-        if (error instanceof Error)
+        if (error instanceof Error) {
             core.setFailed(error.message);
+        }
     }
 }
 run();
@@ -218,7 +217,11 @@ const simple_git_1 = __importDefault(__nccwpck_require__(103));
 async function createTimestamps({ core, files, timestampsFilePath, baseDir, commit = false }) {
     try {
         await fs.mkdir(path_1.default.dirname(timestampsFilePath), { recursive: true });
-        await fs.writeFile(timestampsFilePath, JSON.stringify(files, null, ' '));
+        const relative = Object.fromEntries(Object.entries(files).map(([name, f]) => [
+            path_1.default.relative(baseDir, name),
+            f
+        ]));
+        await fs.writeFile(timestampsFilePath, JSON.stringify(relative, null, ' '));
         if (!commit) {
             core.info('local run');
             return;
@@ -232,8 +235,9 @@ async function createTimestamps({ core, files, timestampsFilePath, baseDir, comm
             await git.pull('origin').add(timestampsFilePath);
         }
         catch (error) {
-            if (error instanceof Error)
+            if (error instanceof Error) {
                 core.error(error);
+            }
             core.info(`Keep ${timestampsFilePath}`);
             return;
         }
@@ -261,79 +265,155 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.runVerify = void 0;
+exports.runVerify = exports.resolveDependency = void 0;
 const dayjs_1 = __importDefault(__nccwpck_require__(401));
 const promises_1 = __importDefault(__nccwpck_require__(292));
 const path_1 = __importDefault(__nccwpck_require__(17));
 const simple_git_1 = __importDefault(__nccwpck_require__(103));
+const scc_1 = __importDefault(__nccwpck_require__(343));
+function resolveDependency(baseDir, files, verifiedFiles, verifyJson) {
+    var _a, _b;
+    const max = (d1, d2) => !d1 ? d2 : !d2 || d1.isAfter(d2) ? d1 : d2;
+    const toAbsolute = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(baseDir, p);
+    function toAbsoluteFiles(orig) {
+        const r = new Map();
+        for (const [name, d] of orig) {
+            r.set(toAbsolute(name), d);
+        }
+        return r;
+    }
+    files = toAbsoluteFiles(files);
+    verifiedFiles = toAbsoluteFiles(verifiedFiles);
+    const dependencies = new Map(Object.entries(verifyJson).map(([name, f]) => {
+        var _a;
+        return [
+            toAbsolute(name),
+            new Set((_a = f.dependencies) === null || _a === void 0 ? void 0 : _a.map(toAbsolute))
+        ];
+    }));
+    for (const [name, f] of Object.entries(verifyJson)) {
+        const sameas = (_a = f.attributes) === null || _a === void 0 ? void 0 : _a.SAMEAS;
+        if (sameas)
+            (_b = dependencies.get(toAbsolute(sameas))) === null || _b === void 0 ? void 0 : _b.add(toAbsolute(name));
+    }
+    const cycleResolved = (0, scc_1.default)(dependencies);
+    const rev = new Map();
+    const updatedTimes = [];
+    const sccDependencies = [];
+    const getUpdatedTimes = (i) => typeof i === 'number' ? updatedTimes[i] : undefined;
+    for (let i = 0; i < cycleResolved.length; i++)
+        for (const name of cycleResolved[i])
+            rev.set(name, i);
+    // 昇順に依存が増える
+    for (let i = 0; i < cycleResolved.length; i++) {
+        sccDependencies[i] = new Set([i]);
+        for (const name of cycleResolved[i]) {
+            updatedTimes[i] = max(updatedTimes[i], files.get(name));
+            for (const dep of dependencies.get(name) || []) {
+                const dt = rev.get(dep);
+                if (dt !== undefined) {
+                    // dt < i
+                    if (!sccDependencies[i].has(dt)) {
+                        for (const dtt of sccDependencies[dt])
+                            sccDependencies[i].add(dtt);
+                    }
+                    updatedTimes[i] = max(updatedTimes[i], getUpdatedTimes(dt));
+                }
+            }
+        }
+    }
+    const resolvedDependencies = [];
+    for (let i = 0; i < sccDependencies.length; i++) {
+        resolvedDependencies[i] = new Set();
+        for (const t of sccDependencies[i]) {
+            for (const dep of cycleResolved[t]) {
+                resolvedDependencies[i].add(dep);
+            }
+        }
+    }
+    const getDependencies = (i) => typeof i === 'number' ? resolvedDependencies[i] : [];
+    return Object.fromEntries(Object.entries(verifyJson).map(([name, f]) => {
+        name = toAbsolute(name);
+        return [
+            name,
+            {
+                ...f,
+                dependencies: [...getDependencies(rev.get(name))],
+                verifiedTime: verifiedFiles.get(name),
+                updatedTime: getUpdatedTimes(rev.get(name))
+            }
+        ];
+    }));
+}
+exports.resolveDependency = resolveDependency;
 class Verifier {
-    constructor(core, baseDir, verifyJson) {
+    constructor(core, baseDir) {
         this.core = core;
         this.baseDir = baseDir;
-        this.verifyJson = verifyJson;
     }
     /**
      * verify
      * @param timeout seconds
      */
-    async verify(files, verifiedFiles, timeout) {
+    async verify(files, verifiedFiles, timeout, verifyJson) {
+        await this.verifyImpl({
+            verifyJson: resolveDependency(this.baseDir, files, verifiedFiles, verifyJson),
+            timeout
+        });
+    }
+    async verifyImpl({ verifyJson, timeout }) {
         const startTime = (0, dayjs_1.default)();
         const timeoutTime = startTime.add(timeout, 'seconds');
         this.core.info(`run \`verify\` from ${startTime.toISOString()} to ${timeoutTime.toISOString()}`);
-        for (const [k, verified] of verifiedFiles) {
-            if (verified.isBefore(files.get(k))) {
-                verifiedFiles.delete(k);
-            }
-        }
-        this.core.info(JSON.stringify(this.verifyJson));
+        this.core.info(JSON.stringify(verifyJson));
     }
-}
-async function parseTimesampsJson(timestampsFilePath, baseDir) {
-    try {
-        const text = await promises_1.default.readFile(timestampsFilePath, 'utf-8');
-        const obj = JSON.parse(text);
-        const result = new Map();
-        for (const [k, v] of Object.entries(obj)) {
-            if (typeof v === 'string') {
-                try {
-                    result.set(path_1.default.join(baseDir, k), (0, dayjs_1.default)(v));
-                }
-                catch {
-                    // do nothing
-                }
-            }
-        }
-        return result;
-    }
-    catch (error) {
-        return new Map();
-    }
-}
-async function getFilesWithGitTimestamp(git, baseDir) {
-    const outputTolines = (output) => output
-        .split('\n')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-    const files = await Promise.all(outputTolines(await git.raw(['ls-files']))
-        .map(line => path_1.default.join(baseDir, line))
-        .map(async (f) => [
-        f,
-        (0, dayjs_1.default)(await git.raw([
-            '-c',
-            'diff.renames=false',
-            'log',
-            '--pretty=format:%ci',
-            '-n1',
-            f
-        ]))
-    ]));
-    return new Map(files);
 }
 async function runVerify({ core, timeout, verifyJson, timestampsFilePath, baseDir }) {
     const git = (0, simple_git_1.default)(baseDir);
+    async function parseTimesampsJson() {
+        try {
+            const text = await promises_1.default.readFile(timestampsFilePath, 'utf-8');
+            const obj = JSON.parse(text);
+            const result = new Map();
+            for (const [k, v] of Object.entries(obj)) {
+                if (typeof v === 'string') {
+                    try {
+                        result.set(path_1.default.join(baseDir, k), (0, dayjs_1.default)(v));
+                    }
+                    catch {
+                        // do nothing
+                    }
+                }
+            }
+            return result;
+        }
+        catch (error) {
+            return new Map();
+        }
+    }
+    async function getFilesWithGitTimestamp() {
+        const outputTolines = (output) => output
+            .split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        const files = await Promise.all(outputTolines(await git.raw(['ls-files']))
+            .map(line => path_1.default.join(baseDir, line))
+            .map(async (f) => [
+            f,
+            (0, dayjs_1.default)(await git.raw([
+                '-c',
+                'diff.renames=false',
+                'log',
+                '--pretty=format:%ci',
+                '-n1',
+                f
+            ]))
+        ]));
+        return new Map(files);
+    }
     await git.fetch('ogirin');
-    const files = await getFilesWithGitTimestamp(git, baseDir);
-    const verifiedFiles = await parseTimesampsJson(timestampsFilePath, baseDir);
+    const files = await getFilesWithGitTimestamp();
+    const verifiedFiles = await parseTimesampsJson();
     await core.group('git timestamps', async () => {
         core.info(JSON.stringify([...files]));
     });
@@ -346,7 +426,7 @@ async function runVerify({ core, timeout, verifyJson, timestampsFilePath, baseDi
     catch (error) {
         core.debug('not in posix');
     }
-    await new Verifier(core, baseDir, verifyJson).verify(files, verifiedFiles, timeout);
+    await new Verifier(core, baseDir).verify(files, verifiedFiles, timeout, verifyJson);
 }
 exports.runVerify = runVerify;
 
@@ -1766,6 +1846,65 @@ exports.createDeferred = deferred;
  */
 exports["default"] = deferred;
 //# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 343:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = tarjan;
+
+// Adapted from https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm#The_algorithm_in_pseudocode
+
+function tarjan(graph) {
+  const indices = new Map();
+  const lowlinks = new Map();
+  const onStack = new Set();
+  const stack = [];
+  const scc = [];
+  let idx = 0;
+
+  function strongConnect(v) {
+    indices.set(v, idx);
+    lowlinks.set(v, idx);
+    idx++;
+    stack.push(v);
+    onStack.add(v);
+
+    const deps = graph.get(v);
+    for (const dep of deps) {
+      if (!indices.has(dep)) {
+        strongConnect(dep);
+        lowlinks.set(v, Math.min(lowlinks.get(v), lowlinks.get(dep)));
+      } else if (onStack.has(dep)) {
+        lowlinks.set(v, Math.min(lowlinks.get(v), indices.get(dep)));
+      }
+    }
+
+    if (lowlinks.get(v) === indices.get(v)) {
+      const vertices = new Set();
+      let w = null;
+      while (v !== w) {
+        w = stack.pop();
+        onStack.delete(w);
+        vertices.add(w);
+      }
+      scc.push(vertices);
+    }
+  }
+
+  for (const v of graph.keys()) {
+    if (!indices.has(v)) {
+      strongConnect(v);
+    }
+  }
+
+  return scc;
+}
+
 
 /***/ }),
 
