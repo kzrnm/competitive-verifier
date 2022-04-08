@@ -18,7 +18,7 @@
   "examples/awk/sameas.awk": {
     "links": [],
     "attributes": {
-      "SAMEAS": "examples/awk/circle.test.awk"
+      "VERIFIER": "examples/awk/circle.test.awk"
     },
     "dependencies": null
   },

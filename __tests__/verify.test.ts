@@ -7,7 +7,7 @@ describe('resolveDependency', () => {
   test('empty', () => {
     expect(
       resolveDependency(__dirname, new Map(), new Map(), {})
-    ).toStrictEqual({})
+    ).toStrictEqual([])
   })
 
   test('dependency', () => {
@@ -39,86 +39,67 @@ describe('resolveDependency', () => {
           'foo2-2.sh': {dependencies: ['foo2-1.sh', 'foo3.sh']},
           'foo3.sh': {dependencies: []},
           'sameas1.sh': {dependencies: []},
-          'sameas2.sh': {attributes: {SAMEAS: 'sameas1.sh'}},
+          'sameas2.sh': {attributes: {VERIFIER: 'sameas1.sh'}},
           'new.sh': {}
         }
       )
-    ).toStrictEqual(
-      Object.fromEntries([
-        [
-          pathWithBase('foo1.sh'),
-          {
-            dependencies: [
-              pathWithBase('foo1.sh'),
-              pathWithBase('foo2-2.sh'),
-              pathWithBase('foo2-1.sh'),
-              pathWithBase('foo3.sh')
-            ],
-            updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T15:27:58+09:00')
-          }
-        ],
-        [
-          pathWithBase('foo2-1.sh'),
-          {
-            dependencies: [
-              pathWithBase('foo2-2.sh'),
-              pathWithBase('foo2-1.sh'),
-              pathWithBase('foo3.sh')
-            ],
-            updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T16:27:58+09:00')
-          }
-        ],
-        [
+    ).toStrictEqual([
+      {
+        name: pathWithBase('foo3.sh'),
+        dependencies: [pathWithBase('foo3.sh')],
+        updatedTime: dayjs('2012-03-04T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T18:27:58+09:00')
+      },
+      {
+        name: pathWithBase('foo2-2.sh'),
+        dependencies: [
           pathWithBase('foo2-2.sh'),
-          {
-            dependencies: [
-              pathWithBase('foo2-2.sh'),
-              pathWithBase('foo2-1.sh'),
-              pathWithBase('foo3.sh')
-            ],
-            updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T17:27:58+09:00')
-          }
+          pathWithBase('foo2-1.sh'),
+          pathWithBase('foo3.sh')
         ],
-        [
-          pathWithBase('foo3.sh'),
-          {
-            dependencies: [pathWithBase('foo3.sh')],
-            updatedTime: dayjs('2012-03-04T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T18:27:58+09:00')
-          }
+        updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T17:27:58+09:00')
+      },
+      {
+        name: pathWithBase('foo2-1.sh'),
+        dependencies: [
+          pathWithBase('foo2-2.sh'),
+          pathWithBase('foo2-1.sh'),
+          pathWithBase('foo3.sh')
         ],
-        [
-          pathWithBase('sameas1.sh'),
-          {
-            dependencies: [
-              pathWithBase('sameas1.sh'),
-              pathWithBase('sameas2.sh')
-            ],
-            updatedTime: dayjs('2012-03-05T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T19:27:58+09:00')
-          }
+        updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T16:27:58+09:00')
+      },
+      {
+        name: pathWithBase('foo1.sh'),
+        dependencies: [
+          pathWithBase('foo1.sh'),
+          pathWithBase('foo2-2.sh'),
+          pathWithBase('foo2-1.sh'),
+          pathWithBase('foo3.sh')
         ],
-        [
-          pathWithBase('sameas2.sh'),
-          {
-            attributes: {SAMEAS: 'sameas1.sh'},
-            dependencies: [pathWithBase('sameas2.sh')],
-            updatedTime: dayjs('2012-03-05T15:27:58+09:00'),
-            verifiedTime: dayjs('2012-03-04T20:27:58+09:00')
-          }
-        ],
-        [
-          pathWithBase('new.sh'),
-          {
-            dependencies: [pathWithBase('new.sh')],
-            updatedTime: dayjs('2012-03-07T15:27:58+09:00'),
-            verifiedTime: undefined
-          }
-        ]
-      ])
-    )
+        updatedTime: dayjs('2012-03-08T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T15:27:58+09:00')
+      },
+      {
+        name: pathWithBase('sameas2.sh'),
+        dependencies: [pathWithBase('sameas2.sh')],
+        attributes: {VERIFIER: 'sameas1.sh'},
+        updatedTime: dayjs('2012-03-05T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T20:27:58+09:00')
+      },
+      {
+        name: pathWithBase('sameas1.sh'),
+        dependencies: [pathWithBase('sameas1.sh'), pathWithBase('sameas2.sh')],
+        updatedTime: dayjs('2012-03-05T15:27:58+09:00'),
+        verifiedTime: dayjs('2012-03-04T19:27:58+09:00')
+      },
+      {
+        name: pathWithBase('new.sh'),
+        dependencies: [pathWithBase('new.sh')],
+        updatedTime: dayjs('2012-03-07T15:27:58+09:00'),
+        verifiedTime: undefined
+      }
+    ])
   })
 })

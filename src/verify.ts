@@ -8,17 +8,18 @@ import scc from '@rtsao/scc'
 
 type FileWithTimestamp = Map<string, dayjs.Dayjs>
 
-type ResolvedVerifyJsonFile = VerifyJsonFile & {
+type ResolvedVerificationTarget = VerifyJsonFile & {
+  name: string
   verifiedTime?: dayjs.Dayjs
   updatedTime?: dayjs.Dayjs
 }
-type ResolvedVerifyJson = {[filename: string]: ResolvedVerifyJsonFile}
+
 export function resolveDependency(
   baseDir: string,
   files: FileWithTimestamp,
   verifiedFiles: FileWithTimestamp,
   verifyJson: VerifyJson
-): ResolvedVerifyJson {
+): ResolvedVerificationTarget[] {
   const max = (d1?: dayjs.Dayjs, d2?: dayjs.Dayjs): dayjs.Dayjs | undefined =>
     !d1 ? d2 : !d2 || d1.isAfter(d2) ? d1 : d2
 
@@ -34,16 +35,25 @@ export function resolveDependency(
   }
   files = toAbsoluteFiles(files)
   verifiedFiles = toAbsoluteFiles(verifiedFiles)
-  const dependencies = new Map(
+
+  verifyJson = Object.fromEntries(
     Object.entries(verifyJson).map(([name, f]) => [
       toAbsolute(name),
-      new Set(f.dependencies?.map(toAbsolute))
+      {...f, dependencies: f.dependencies?.map(toAbsolute)}
     ])
   )
 
+  const dependencies = new Map(
+    Object.entries(verifyJson).map(([name, f]) => [
+      name,
+      new Set(f.dependencies)
+    ])
+  )
+
+  // VERIFIER は逆向きの依存として扱う
   for (const [name, f] of Object.entries(verifyJson)) {
-    const sameas = f.attributes?.SAMEAS
-    if (sameas) dependencies.get(toAbsolute(sameas))?.add(toAbsolute(name))
+    if (f.attributes?.VERIFIER)
+      dependencies.get(toAbsolute(f.attributes.VERIFIER))?.add(name)
   }
 
   const cycleResolved = scc(dependencies)
@@ -87,60 +97,20 @@ export function resolveDependency(
   const getDependencies = (i: number | undefined): Iterable<string> =>
     typeof i === 'number' ? resolvedDependencies[i] : []
 
-  return Object.fromEntries(
-    Object.entries(verifyJson).map(([name, f]) => {
-      name = toAbsolute(name)
-      return [
+  return cycleResolved.flatMap(c =>
+    [...c].map(name => {
+      const f = verifyJson[name]
+      return {
+        ...f,
         name,
-        {
-          ...f,
-          dependencies: [...getDependencies(rev.get(name))],
-          verifiedTime: verifiedFiles.get(name),
-          updatedTime: getUpdatedTimes(rev.get(name))
-        }
-      ]
+        dependencies: [...getDependencies(rev.get(name))],
+        verifiedTime: verifiedFiles.get(name),
+        updatedTime: getUpdatedTimes(rev.get(name))
+      }
     })
   )
 }
-class Verifier {
-  constructor(private core: ActionsCore, private baseDir: string) {}
 
-  /**
-   * verify
-   * @param timeout seconds
-   */
-  async verify(
-    files: FileWithTimestamp,
-    verifiedFiles: FileWithTimestamp,
-    timeout: number,
-    verifyJson: VerifyJson
-  ): Promise<void> {
-    await this.verifyImpl({
-      verifyJson: resolveDependency(
-        this.baseDir,
-        files,
-        verifiedFiles,
-        verifyJson
-      ),
-      timeout
-    })
-  }
-  private async verifyImpl({
-    verifyJson,
-    timeout
-  }: {
-    verifyJson: ResolvedVerifyJson
-    timeout: number
-  }): Promise<void> {
-    const startTime = dayjs()
-    const timeoutTime = startTime.add(timeout, 'seconds')
-    this.core.info(
-      `run \`verify\` from ${startTime.toISOString()} to ${timeoutTime.toISOString()}`
-    )
-
-    this.core.info(JSON.stringify(verifyJson))
-  }
-}
 export async function runVerify({
   core,
   timeout,
@@ -153,7 +123,7 @@ export async function runVerify({
   timestampsFilePath: string
   baseDir: string
   timeout: number
-}): Promise<void> {
+}): Promise<VerificationSummary[]> {
   const git = simpleGit(baseDir)
 
   async function parseTimesampsJson(): Promise<FileWithTimestamp> {
@@ -220,10 +190,99 @@ export async function runVerify({
     core.debug('not in posix')
   }
 
-  await new Verifier(core, baseDir).verify(
+  return await new Verifier(core, baseDir).verify(
     files,
     verifiedFiles,
     timeout,
     verifyJson
   )
+}
+
+export class VerificationSummary {
+  constructor(public file: ResolvedVerificationTarget, public status: number) {}
+}
+class Verifier {
+  constructor(private core: ActionsCore, private baseDir: string) {}
+
+  /**
+   * verify
+   * @param timeout seconds
+   */
+  async verify(
+    files: FileWithTimestamp,
+    verifiedFiles: FileWithTimestamp,
+    timeout: number,
+    verifyJson: VerifyJson
+  ): Promise<VerificationSummary[]> {
+    return await this.verifyImpl({
+      verificationTargets: resolveDependency(
+        this.baseDir,
+        files,
+        verifiedFiles,
+        verifyJson
+      ),
+      timeout
+    })
+  }
+
+  /**
+   * run program
+   * @param command shell command
+   * @param attributes
+   * @returns command is ok or not
+   */
+  private async runProgram(
+    command: string,
+    attributes: {[key: string]: string}
+  ): Promise<boolean> {
+    this.core.debug(`${command}, ${attributes}`)
+    return true
+  }
+
+  private async verifyImpl({
+    verificationTargets,
+    timeout
+  }: {
+    verificationTargets: ResolvedVerificationTarget[]
+    timeout: number
+  }): Promise<VerificationSummary[]> {
+    const startTime = dayjs()
+    const timeoutTime = startTime.add(timeout, 'seconds')
+    this.core.info(
+      `run \`verify\` from ${startTime.toISOString()} to ${timeoutTime.toISOString()}`
+    )
+
+    const result: VerificationSummary[] = []
+
+    const statuses = Object.fromEntries(
+      verificationTargets.map(t => [t.name, 0])
+    )
+
+    for (let i = verificationTargets.length - 1; i >= 0; i--) {
+      const target = verificationTargets[i]
+      this.core.debug(JSON.stringify(target))
+      const filename = target.name
+
+      if (
+        target.verifiedTime &&
+        target.updatedTime &&
+        !target.updatedTime.isAfter(target.verifiedTime)
+      ) {
+        statuses[filename] |= 1 // success
+      } else if (dayjs().isBefore(timeoutTime) && target.execute) {
+        if (await this.runProgram(target.execute, target.attributes || {})) {
+          statuses[filename] |= 1 // success
+          target.verifiedTime = dayjs()
+        } else statuses[filename] |= 2 // failure
+      }
+
+      for (const deps of target.dependencies || []) {
+        statuses[deps] |= statuses[filename]
+      }
+
+      result[i] = new VerificationSummary(target, statuses[filename] || 0)
+    }
+
+    return result
+  }
 }
